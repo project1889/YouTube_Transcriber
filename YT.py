@@ -33,9 +33,9 @@ Title: Comprehensive Notes from YouTube Video Transcript
 
             
          """
-'''
-Below code was working for only video link copied from a computer. It was not working for video link copied from mobile device
-'''
+
+#Below code was working for only video link copied from a computer. It was not working for video link copied from mobile device
+
 
 # ## getting the transcript data from yt videos
 # def extract_transcript_details(youtube_video_url):
