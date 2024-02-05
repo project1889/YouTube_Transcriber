@@ -96,47 +96,22 @@ def extract_transcript_details(youtube_video_url):
 def generate_gemini_content(transcript_text, prompt):
     try:
         model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(
-            prompt + transcript_text,
-            safety_settings=[
-                {
-                    "category": "HARM_CATEGORY_HARASSMENT",
-                    "threshold": "BLOCK_LOW_AND_ABOVE",
-                },
-                {
-                    "category": "HARM_CATEGORY_HATE_SPEECH",
-                    "threshold": "BLOCK_LOW_AND_ABOVE",
-                },
-                {
-                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    "threshold": "BLOCK_LOW_AND_ABOVE",
-                },
-                {
-                    "category": "HARM_CATEGORY_DANGEROUS",
-                    "threshold": "BLOCK_LOW_AND_ABOVE",
-                },
-            ]
-        )
+        response = model.generate_content(prompt + transcript_text)
         
-        # If the response has candidates, will return the first candidate's text
-        if hasattr(response, 'candidates') and response.candidates:
-            return response.candidates[0].text
-        else:
-            # If the content was blocked, check the prompt feedback for safety reasons
-            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
-                # Here you may need to adjust based on the actual structure of the prompt feedback
-                for rating in response.prompt_feedback.safety_ratings:
-                    if rating.probability == 'HIGH':
-                        st.error("The video content has been flagged for containing harmful content.")
-                        return None
-                st.error("The content generation was blocked or failed Because video contain harmful content.")
-            else:
-                st.error("No candidates were returned, and no specific feedback was provided.")
-            return None
-    
+        # Assuming that the existence of text in the response is enough
+        # to indicate that content generation was successful
+        return response.text
+
+    except ValueError as e:
+        # Here you would check the specific message of the ValueError
+        # Since the message is redacted in the example provided, we will
+        # simply return a generic message about harmful content
+        return "The video content is harmful and cannot be processed."
     except Exception as e:
-        st.error(f"An error occurred while generating content: {e}")
-        return None
+        # For any other exceptions, you can return or log the error message
+        # Depending on your logging setup, you might use logging.error(e) or print(e)
+        return f"An unexpected error occurred: {e}"
+
 
 st.set_page_config(page_title="Chat with YouTube Video")
 st.header("YouTube Transcript to Detailed Notes Converter")
