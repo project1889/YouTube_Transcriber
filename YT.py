@@ -82,11 +82,61 @@ def extract_transcript_details(youtube_video_url):
         st.error(f"An error occurred: {e}")
         return None
 ## getting the summary based on Prompt from Google Gemini Pro
-def generate_gemini_content(transcript_text,prompt):
+def extract_transcript_details(youtube_video_url):
+    try:
+        video_id = extract_video_id(youtube_video_url)
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
 
-    model=genai.GenerativeModel("gemini-pro")
-    response=model.generate_content(prompt+transcript_text)
-    return response.text
+        transcript = " ".join(segment["text"] for segment in transcript_list)
+        return transcript
+
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return None
+def generate_gemini_content(transcript_text, prompt):
+    try:
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(
+            prompt + transcript_text,
+            safety_settings=[
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_LOW_AND_ABOVE",
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_LOW_AND_ABOVE",
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_LOW_AND_ABOVE",
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS",
+                    "threshold": "BLOCK_LOW_AND_ABOVE",
+                },
+            ]
+        )
+        
+        # If the response has candidates, will return the first candidate's text
+        if hasattr(response, 'candidates') and response.candidates:
+            return response.candidates[0].text
+        else:
+            # If the content was blocked, check the prompt feedback for safety reasons
+            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                # Here you may need to adjust based on the actual structure of the prompt feedback
+                for rating in response.prompt_feedback.safety_ratings:
+                    if rating.probability == 'HIGH':
+                        st.error("The video content has been flagged for containing harmful content.")
+                        return None
+                st.error("The content generation was blocked or failed Because video contain harmful content.")
+            else:
+                st.error("No candidates were returned, and no specific feedback was provided.")
+            return None
+    
+    except Exception as e:
+        st.error(f"An error occurred while generating content: {e}")
+        return None
 
 st.set_page_config(page_title="Chat with YouTube Video")
 st.header("YouTube Transcript to Detailed Notes Converter")
@@ -109,11 +159,13 @@ if st.button("Get Detailed Notes"):
 
     if transcript_text:
         summary = generate_gemini_content(transcript_text, prompt)
-        st.markdown("## Detailed Notes:")
-        st.write(summary)
+        if summary:
+            st.markdown("## Detailed Notes:")
+            st.write(summary)
+        else:
+            st.error("Failed to generate detailed notes. The model response was not as expected Because Content seems harmful.")
     else:
         st.error("Could not extract the transcript. Please check the YouTube link.")
-
 
 
 
